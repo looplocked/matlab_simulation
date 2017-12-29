@@ -4,6 +4,8 @@ classdef UncalibratedVisualServo < handle
         uv_star
         Tcam
         camera
+        URrobot
+        jointpos
         Tf
         T0
         pf
@@ -29,8 +31,9 @@ classdef UncalibratedVisualServo < handle
     end
     
     methods
-        function vs = UncalibratedVisualServo(cam, varargin)
+        function vs = UncalibratedVisualServo(cam, robot, varargin)
             vs.camera = cam;
+            vs.URrobot = robot;
             vs.history = [];
 
             z = 3;
@@ -54,6 +57,7 @@ classdef UncalibratedVisualServo < handle
             vs.verbose = opt.verbose;
             if ~isempty(opt.pose0)
                 vs.T0 = SE3(opt.pose0);
+                vs.jointpos = robot.ikine(SE3(opt.pose0));
             end
             if ~isempty(opt.posef)
                 vs.Tf = SE3(opt.posef);
@@ -61,7 +65,8 @@ classdef UncalibratedVisualServo < handle
 
             % define feature points in XY plane, make vertices of a square
             if isempty(opt.P)
-                opt.P = mkgrid(2, opt.targetsize);
+                targetpos = SE3(-0.7, -0.7, -1);
+                opt.P = mkgrid(2, opt.targetsize, 'pose', targetpos);
             end
             vs.P = opt.P;
             vs.pf = opt.pstar;
@@ -109,11 +114,21 @@ classdef UncalibratedVisualServo < handle
             plot_sphere(vs.P, 0.05, 'b')
             lighting gouraud
             light
-            vs.camera.plot_camera(vs.P, 'label');
+            vs.camera.plot_camera(vs.P, 'label', 'scale', 0.3);
+            %hold on;
+            
+            %vs.jointpos = vs.URrobot.ikine(vs.T0);
+            vs.URrobot.plot(vs.jointpos, 'tilesize', 1, 'jointdiam', 2, 'basewidth', 5);
             
             vs.vel_p = [];
             vs.uv_p = [];
             vs.history = [];
+        end
+        
+        function jacobian = broyden_update(vs)
+        end
+        
+        function rls = rls_update(vs)
         end
         
         function status = step(vs)
@@ -174,6 +189,9 @@ classdef UncalibratedVisualServo < handle
             hist.en = norm(e);
             hist.jcond = cond(J);
             hist.Tcam = vs.Tcam;
+            
+            vs.jointpos = vs.URrobot.ikine(vs.Tcam);
+            vs.URrobot.plot(vs.jointpos, 'tilesize', 1, 'jointdiam', 2, 'basewidth', 5);
 
             vs.history = [vs.history hist]; 
 
