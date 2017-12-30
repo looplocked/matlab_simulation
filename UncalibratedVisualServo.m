@@ -104,7 +104,7 @@ classdef UncalibratedVisualServo < handle
                 vs.camera.clf();
             end
             
-            vs.camera.plot(vs.P);
+            vs.camera.plot(vs.P)
             pause(1)
             
             figure
