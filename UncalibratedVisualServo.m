@@ -8,6 +8,7 @@ classdef UncalibratedVisualServo < handle
         jointpos
         Tf
         T0
+        P0
         pf
         
         history
@@ -28,6 +29,8 @@ classdef UncalibratedVisualServo < handle
         vel_p
         theta
         smoothing
+        
+        jacobian
     end
     
     methods
@@ -57,6 +60,7 @@ classdef UncalibratedVisualServo < handle
             vs.verbose = opt.verbose;
             if ~isempty(opt.pose0)
                 vs.T0 = SE3(opt.pose0);
+                vs.P0 = robot.ikine(SE3(opt.pose0));
                 vs.jointpos = robot.ikine(SE3(opt.pose0));
             end
             if ~isempty(opt.posef)
@@ -91,8 +95,29 @@ classdef UncalibratedVisualServo < handle
                 vs.uv_star = vs.camera.project(vs.P, 'Tcam', inv(vs.Tf))
             end
             
+            Theta = [];
+            F = [];
             vs.camera.T = vs.T0;
-            vs.Tcam = vs.T0;
+            preuv = vs.camera.project(vs.P);
+            preuv = preuv(:);
+            prejoint = vs.P0;
+            deltatheta = [0 0 0 0 0 0]';
+            for i = 1:6
+                deltatheta(i) = 0.017;
+                Theta = [Theta deltatheta];
+                joint = prejoint + deltatheta;
+                coor = vs.URrobot.fkine(joint);
+                prejoint = joint;
+                imageuv = vs.camera.project(vs.P, 'Tcam', coor);
+                F = [F imageuv-preuv];
+                preuv = imageuv;
+            end
+            
+            vs.jacobian = F / Theta;
+            vs.jointpos = prejoint;
+            
+            vs.camera.T = vs.URrobot.fkine(vs.jointpos);
+            vs.Tcam = vs.camera.T;
             
             if 0
                 vs.camera.clf()
@@ -104,7 +129,7 @@ classdef UncalibratedVisualServo < handle
                 vs.camera.clf();
             end
             
-            vs.camera.plot(vs.P)
+            vs.camera.plot(vs.P);
             pause(1)
             
             figure
@@ -125,7 +150,12 @@ classdef UncalibratedVisualServo < handle
             vs.history = [];
         end
         
-        function jacobian = broyden_update(vs)
+        function broyden_update(vs)
+            deltajoint = vs.jointpos - vs.history(:, end).jointpose;
+            uv = vs.camera.plot(vs.P);
+            deltaimage = uv - vs.history(:, end).uv;
+            vs.jacobian = vs.jacobian + vs.lambda * (deltaimage - vs.jacobian * deltajoint)...
+                * deltajoint' / (deltajoint' * deltajoint);
         end
         
         function rls = rls_update(vs)
@@ -164,7 +194,7 @@ classdef UncalibratedVisualServo < handle
             elseif ~isempty(Zest)
                 J = vs.camera.visjac_p(uv, Zest);
             else
-                J = vs.camera.visjac_p(uv, vs.depth );
+                J = vs.camera.visjac_p(uv, vs.depth);
             end
 
             % compute the velocity of camera in camera frame
@@ -192,11 +222,16 @@ classdef UncalibratedVisualServo < handle
             
             vs.jointpos = vs.URrobot.ikine(vs.Tcam);
             vs.URrobot.plot(vs.jointpos, 'tilesize', 1, 'jointdiam', 2, 'basewidth', 5);
+            
+            hist.jointpos = vs.jointpos;
+            hist.jacobian = vs.jacobian;
 
             vs.history = [vs.history hist]; 
 
             vs.vel_p = vel;
             vs.uv_p = uv;
+            
+            broyden_updata();
 
             if norm(e) < vs.eterm,
                 status = 1;
