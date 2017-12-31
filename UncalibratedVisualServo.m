@@ -149,6 +149,7 @@ classdef UncalibratedVisualServo < handle
             vs.vel_p = [];
             vs.uv_p = [];
             vs.history = [];
+            hist.uv = preuv;
         end
         
         function broyden_update(vs)

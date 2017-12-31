@@ -21,13 +21,20 @@ L5=Link('d',0.1157,'a',0,'alpha',-1.570796327);
 L6=Link('d',0.0922,'a',0,'alpha',0);
 robot = SerialLink([L1,L2,L3,L4,L5,L6], 'name', 'URRobot');
 
-uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'lambda', 0.02, 'eterm', 0.5)
-uibvs.run()
-figure()
-uibvs.plot_p();
-uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T1, 'pstar', pd);
-uibvs.run()
-uibvs.plot_p();
-uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T2, 'pstar', pd, 'niter', 10);
-uibvs.run()
-uibvs.plot_p();
+psize = 0.5;
+ppos = SE3(-0.7, -0.7, -1);
+ptarget = mkgrid(2, 0.5, 'pose', ppos);
+uibvs = MyUncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'target', ptarget, 'lambda', 0.02, 'eterm', 0.5);
+uibvs.run();
+
+% uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'lambda', 0.02, 'eterm', 0.5)
+% uibvs.run()
+% figure()
+% uibvs.plot_p();
+% uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T1, 'pstar', pd);
+% uibvs.run()
+% uibvs.plot_p();
+% uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T2, 'pstar', pd, 'niter', 10);
+% uibvs.run()
+% uibvs.plot_p();
+
