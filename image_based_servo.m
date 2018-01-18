@@ -26,8 +26,9 @@ ppos = SE3(-0.7, -0.7, -1);
 ptarget = mkgrid(2, 0.5, 'pose', ppos);
 uibvs = MyUncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'target', ptarget, 'lambda', 0.02, 'eterm', 0.5);
 uibvs.run();
+uibvs.plot_p();
 
-% uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'lambda', 0.02, 'eterm', 0.5)
+% uibvs = UncalibratedVisualServo(cam, robot, 'pose0', T0, 'pstar', pd, 'lambda', 0.002, 'eterm', 0.5)
 % uibvs.run()
 % figure()
 % uibvs.plot_p();
