@@ -57,34 +57,34 @@ classdef MyUncalibratedVisualServo < handle
         end
         
         function [J0, newinitjoint, newinitimage] = initjacobian(vs)
-%             theta = [];
-%             F = [];
-%             vs.camera.T = vs.T0;
-%             uv_p = vs.camera.project(vs.P);
-%             uv_p = uv_p(:);
-%             joint_p = vs.P0';
-%             for i = 1:6
-%                 deltatheta = [0 0 0 0 0 0]';
-%                 deltatheta(i) = 0.017;
-%                 theta = [theta deltatheta];
-%                 joint = joint_p + deltatheta;
-%                 coor = vs.robot.fkine(joint);
-%                 joint_p = joint;
-%                 imageuv = vs.camera.project(vs.P, 'pose', coor);
-%                 imageuv = imageuv(:);
-%                 F = [F imageuv-uv_p];
-%                 uv_p = imageuv;
-%             end
-%             J0 = F / theta;
-%             newinitjoint = joint_p';
-%             newinitimage = uv_p;
+              theta = [];
+              F = [];
               vs.camera.T = vs.T0;
               uv_p = vs.camera.project(vs.P);
-              pt = inv(vs.T0) * vs.P;
-              J0 = vs.camera.visjac_p(uv_p, pt(3, :));
               uv_p = uv_p(:);
-              newinitjoint = vs.P0;
+              joint_p = vs.P0';
+              for i = 1:6
+                  deltatheta = [0 0 0 0 0 0]';
+                  deltatheta(i) = 0.017;
+                  theta = [theta deltatheta];
+                  joint = joint_p + deltatheta;
+                  coor = vs.robot.fkine(joint);
+                  joint_p = joint;
+                  imageuv = vs.camera.project(vs.P, 'pose', coor);
+                  imageuv = imageuv(:);
+                  F = [F imageuv-uv_p];
+                  uv_p = imageuv;
+              end
+              J0 = F / theta;
+              newinitjoint = joint_p';
               newinitimage = uv_p;
+%               vs.camera.T = vs.T0;
+%               uv_p = vs.camera.project(vs.P);
+%               pt = inv(vs.T0) * vs.P;
+%               J0 = vs.camera.visjac_p(uv_p, pt(3, :));
+%               uv_p = uv_p(:);
+%               newinitjoint = vs.P0;
+%               newinitimage = uv_p;
         end
         
         function init(vs)
@@ -134,7 +134,7 @@ classdef MyUncalibratedVisualServo < handle
                 return
             end
             
-            vs.jointpos = vs.prejoint + v';
+            vs.jointpos = vs.prejoint + vs.lambda * v';
             vs.robot.plot(vs.jointpos, 'tilesize', 1, 'jointdiam', 2, 'basewidth', 5);
             vs.Tcam = vs.robot.fkine(vs.jointpos);
             vs.camera.T = vs.Tcam;
@@ -193,6 +193,36 @@ classdef MyUncalibratedVisualServo < handle
         end
         
         function plot_p(vs)
+            if isempty(vs.history)
+                return
+            end
+            clf
+            hold on
+            % image plane trajectory
+            uv = [vs.history.uv]'; 
+            % result is a vector with row per time step, each row is u1, v1, u2, v2 ...
+            for i=1:numcols(uv)/2
+                p = uv(:,i*2-1:i*2);    % get data for i'th point
+                plot(p(:,1), p(:,2), 'b')
+            end
+            
+            % mark the initial target shape
+            plot_poly( reshape(uv(1,:), 2, []), 'o--');
+            uv(end,:)
+            
+            % mark the final target shape
+            if ~isempty(vs.uv_star)
+                plot_poly(vs.uv_star, 'rh:', 'MarkerSize', 8, 'MarkerFaceColor', 'r')
+            else
+                plot_poly( reshape(uv(end,:), 2, []), 'rh--', 'MarkerSize', 8, 'MarkerFaceColor', 'r');
+            end
+            axis([0 vs.camera.npix(1) 0 vs.camera.npix(2)]);
+            daspect([1 1 1])
+            set(gca, 'Ydir' , 'reverse');
+            grid
+            xlabel('u (pixels)');
+            ylabel('v (pixels)');
+            hold off
         end
     end
 end
