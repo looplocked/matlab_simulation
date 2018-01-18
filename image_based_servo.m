@@ -1,6 +1,7 @@
 clear
 clc
-cam = CentralCamera('default');
+D = [1.10893 -12.6423 -0.00472911 0.0800572 61.8363];
+cam = CentralCamera('default', 'distortion-bouguet', D);
 T_C0 = SE3(1,1,-3)*SE3.Rz(0.6);
 Cd_T_G = SE3(0, 0, 1);
 pd = bsxfun(@plus, 200*[-1 -1 1 1; 1 -1 -1 1], cam.pp')
@@ -24,8 +25,9 @@ L6=Link('d',0.0922,'a',0,'alpha',0);
 robot = SerialLink([L1,L2,L3,L4,L5,L6], 'name', 'URRobot');
 
 psize = 0.5;
-ppos = SE3(-0.7, -0.7, -1);
-ptarget = mkgrid(2, 0.5, 'pose', ppos);
+ppos1 = SE3(-0.7, -0.7, -1);
+ppos2 = SE3(-0.7, -0.7, -0.5);
+ptarget = mkgrid(2, 0.5, 'pose', ppos2);
 uibvs = MyUncalibratedVisualServo(cam, robot, 'pose0', T3, 'pstar', pd, 'target', ptarget, 'lambda', 0.02, 'eterm', 0.5);
 uibvs.run();
 uibvs.plot_p();

@@ -78,13 +78,6 @@ classdef MyUncalibratedVisualServo < handle
               J0 = F / theta;
               newinitjoint = joint_p';
               newinitimage = uv_p;
-%               vs.camera.T = vs.T0;
-%               uv_p = vs.camera.project(vs.P);
-%               pt = inv(vs.T0) * vs.P;
-%               J0 = vs.camera.visjac_p(uv_p, pt(3, :));
-%               uv_p = uv_p(:);
-%               newinitjoint = vs.P0;
-%               newinitimage = uv_p;
         end
         
         function init(vs)
