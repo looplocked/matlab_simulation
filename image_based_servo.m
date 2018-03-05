@@ -4,7 +4,8 @@ D = [1.10893 -12.6423 -0.00472911 0.0800572 61.8363];
 cam = CentralCamera('default', 'distortion-bouguet', D);
 T_C0 = SE3(1,1,-3)*SE3.Rz(0.6);
 Cd_T_G = SE3(0, 0, 1);
-pd = bsxfun(@plus, 200*[-1 -1 1 1; 1 -1 -1 1], cam.pp')
+pd = bsxfun(@plus, 300*[-1 -1 1 1; 1 -1 -1 1], cam.pp')
+pd1 = bsxfun(@plus, 150*[-1 -1 1 1; 1 -1 -1 1], cam.pp')
 T_C0 = SE3(1,1,-3)*SE3.Rx(0.6);
 %ibvs = UncalibratedVisualServo(cam, 'pose0', T_C0, 'pstar', pd)
 
@@ -26,9 +27,9 @@ robot = SerialLink([L1,L2,L3,L4,L5,L6], 'name', 'URRobot');
 
 psize = 0.5;
 ppos1 = SE3(-0.7, -0.7, -1);
-ppos2 = SE3(-0.7, -0.7, -0.5);
+ppos2 = SE3(-0.7, -0.7, -0.2);
 ptarget = mkgrid(2, 0.5, 'pose', ppos2);
-uibvs = MyUncalibratedVisualServo(cam, robot, 'pose0', T3, 'pstar', pd, 'target', ptarget, 'lambda', 0.02, 'eterm', 0.5);
+uibvs = MyUncalibratedVisualServo(cam, robot, 'pose0', T3, 'pstar', pd, 'target', ptarget, 'lambda', 0.1, 'eterm', 2, 'compensation', 0.7);
 uibvs.run();
 uibvs.plot_p();
 

@@ -13,14 +13,17 @@ classdef MyUncalibratedVisualServo < handle
         eterm
         lambda
         history
+        compensation
         
         image
         jacobian
         jointpos
+        rls
         
         preimage
         prejacobian
         prejoint
+        prerls
         
         arglist
     end
@@ -40,6 +43,7 @@ classdef MyUncalibratedVisualServo < handle
             
             opt.eterm = 0.5;
             opt.lambda = 0.08;
+            opt.compensation = 0.1;
             
             [opt, vs.arglist] = tb_optparse(opt, varargin);
             vs.niter = opt.niter;
@@ -54,6 +58,7 @@ classdef MyUncalibratedVisualServo < handle
             vs.lambda = opt.lambda;
             vs.eterm = opt.eterm;
             vs.uv_star = opt.pstar;
+            vs.compensation = opt.compensation;
         end
         
         function [J0, newinitjoint, newinitimage] = initjacobian(vs)
@@ -87,6 +92,9 @@ classdef MyUncalibratedVisualServo < handle
             vs.preimage = vs.image;
             vs.prejoint = vs.jointpos;
             
+            vs.rls = eye(6);
+            vs.prerls = eye(6);
+            
             vs.camera.T = vs.robot.fkine(vs.jointpos);
             vs.Tcam = vs.camera.T;
             
@@ -102,17 +110,20 @@ classdef MyUncalibratedVisualServo < handle
             
             hist.uv = vs.image;
             e = vs.image - vs.uv_star(:);
+            hist.deltajoint = vs.jointpos;
             hist.e = e(:);
             hist.jointpos = vs.jointpos;
             hist.jacobian = vs.jacobian;
+            hist.rls = vs.rls;
             vs.history = [vs.history hist];
         end
         
-        function newjacobian = broyden_update(vs)
+        function [newjacobian, newrls] = broyden_update(vs)
             deltaimage = vs.image - vs.preimage;
             deltajoint = vs.jointpos - vs.prejoint;
             newjacobian = vs.prejacobian + (deltaimage - vs.prejacobian * deltajoint')...
-                * deltajoint / (deltajoint * deltajoint');
+                * deltajoint *vs.prerls / (vs.compensation + deltajoint * vs.prerls * deltajoint');
+            newrls = 1 / vs.compensation * (vs.prerls - vs.prerls * (deltajoint' * deltajoint) * vs.prerls / (vs.compensation + deltajoint * vs.prerls * deltajoint'));
         end
         
         function status = step(vs)
@@ -121,13 +132,19 @@ classdef MyUncalibratedVisualServo < handle
             e = vs.image - vs.uv_star(:);
             e = e(:);
             try
+                tic
                 v = -pinv(vs.jacobian) * e;
+                toc
             catch
                 status = -1;
                 return
             end
             
+            tic
+            hist.deltajoint = vs.lambda * v';
             vs.jointpos = vs.prejoint + vs.lambda * v';
+            toc
+            
             vs.robot.plot(vs.jointpos, 'tilesize', 1, 'jointdiam', 2, 'basewidth', 5);
             vs.Tcam = vs.robot.fkine(vs.jointpos);
             vs.camera.T = vs.Tcam;
@@ -135,16 +152,20 @@ classdef MyUncalibratedVisualServo < handle
             uv = vs.camera.project(vs.P);
             vs.image = uv(:);
             
-            vs.jacobian = vs.broyden_update();
+            tic
+            [vs.jacobian, vs.rls] = vs.broyden_update();
+            toc
             
             vs.prejoint = vs.jointpos;
             vs.preimage = vs.image;
             vs.prejacobian = vs.jacobian;
+            vs.prerls = vs.rls;
             
             hist.e = e;
             hist.jointpos = vs.prejoint;
             hist.uv = vs.preimage;
             hist.jacobian = vs.prejacobian;
+            hist.rls = vs.prerls;
             vs.history = [vs.history hist];
             
             if norm(e) < vs.eterm
@@ -169,6 +190,7 @@ classdef MyUncalibratedVisualServo < handle
                 
                 if status > 0
                     fprintf('completed on error tolerance\n');
+                    fprintf('iteration count is %d\n', ksteps);
                     break;
                 elseif status < 0
                     fprintf('failed on error\n');
